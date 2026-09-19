@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VoltSense Pro | Enterprise IoT Energy Intelligence & Watchdog Platform</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<div id="toastContainer"></div>
+
+<header>
+  <div class="brand-group">
+    <div class="brand-logo">⚡</div>
+    <div class="brand-title">
+      <h1>Volt<span>Sense</span> Pro</h1>
+      <p>Autonomous IoT Micro-Grid Platform</p>
+    </div>
+  </div>
+
+  <div class="nav-actions">
+    <div class="broker-pill">
+      <div class="pulse-dot"></div>
+      <span id="apiStatusLabel">MQTT: <strong>emqx.vit.ac.in</strong> (24ms)</span>
+    </div>
+
+    <div class="view-tabs">
+      <button class="tab-btn active" onclick="switchAppTab('admin')">Enterprise Admin</button>
+      <button class="tab-btn" onclick="switchAppTab('user')">Student Portal</button>
+      <button class="tab-btn" onclick="openDataStudio()">Data Injector Studio</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- ADMIN PANEL -->
+  <section id="viewAdmin" class="view-pane active">
+    <div class="metrics-grid">
+      <div class="kpi-card">
+        <div class="kpi-header"><span class="kpi-label">Campus Real-Time Draw</span><span class="kpi-badge" style="background:var(--primary-dim); color:var(--primary);">PZEM-004T</span></div>
+        <div class="kpi-value"><span id="metricLiveWatts">4,120</span> <span style="font-size: 14px;">W</span></div>
+        <div class="kpi-subtext"><span style="color:var(--success);">● Active Grid</span> 1000ms Ingest</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header"><span class="kpi-label">Ghost / Standby Vampire Drain</span><span class="kpi-badge" style="background:var(--purple-dim); color:var(--purple);">NILM ISOLATE</span></div>
+        <div class="kpi-value" style="color: var(--purple);"><span id="metricGhostWatts">84</span> <span style="font-size: 14px;">W</span></div>
+        <div class="kpi-subtext">Phantom load isolated</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header"><span class="kpi-label">Fleet Equipment Health</span><span class="kpi-badge" style="background:rgba(16,185,129,0.15); color:var(--success);">HARMONICS</span></div>
+        <div class="kpi-value" style="color: var(--success);" id="metricFleetHealth">94.2%</div>
+        <div class="kpi-subtext">Harmonics nominal</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header"><span class="kpi-label">Autonomous Cutoffs</span><span class="kpi-badge" style="background:rgba(245,158,11,0.15); color:var(--warning);">WATCHDOG</span></div>
+        <div class="kpi-value" style="color: var(--warning);" id="metricCutoffs">14</div>
+        <div class="kpi-subtext">Avoided ~6.2 kWh energy loss</div>
+      </div>
+    </div>
+
+    <div class="split-layout">
+      <div class="panel-card">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">Active Power Waveform & NILM Stream</div>
+            <span style="font-size: 11px; color: var(--text-dim);">Live Timeseries Telemetry Chunk</span>
+          </div>
+
+          <div class="chart-controls">
+            <button class="chart-filter-btn active" id="filterWatts" onclick="setChartDataset('watts')">Active Watts</button>
+            <button class="chart-filter-btn" id="filterGhost" onclick="setChartDataset('ghost')">Ghost Vampire</button>
+            <button class="chart-filter-btn" id="filterPF" onclick="setChartDataset('pf')">Power Factor (PF)</button>
+            <button class="btn btn-ghost" style="padding:4px 8px; font-size:11px;" onclick="exportDataJSON()">Export JSON</button>
+          </div>
+        </div>
+
+        <div style="height: 270px; width: 100%;">
+          <canvas id="liveStreamingChart"></canvas>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-header">
+          <div class="panel-title">🏆 Campus Efficiency League</div>
+          <span class="badge-tag tag-occupied">Live Auto-Ranked</span>
+        </div>
+        <div id="leaderboardList" style="display:flex; flex-direction:column; gap:10px;"></div>
+      </div>
+    </div>
+
+    <div class="panel-card">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title" id="roomSpatialTitle">Spatial Presence: Hostel Q-Block 101</div>
+          <span style="font-size: 11px; color: var(--text-dim);">60 GHz mmWave Radar Occupancy Tracking</span>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="display:flex; gap:6px;" id="spatialRoomTabs"></div>
+          <div style="display:flex; align-items:center; gap:8px; background:#090e18; padding:4px 10px; border-radius:6px; border:1px solid var(--card-border);">
+            <span style="font-size: 11px; font-weight:700; color:var(--text-muted);">OCCUPANTS:</span>
+            <button class="btn btn-ghost" style="padding:2px 8px;" onclick="shiftOccupantCount(-1)">−</button>
+            <span id="labelOccupantsCount" style="font-weight:800; font-size:13px; color:var(--primary); min-width:40px; text-align:center;">6 / 6</span>
+            <button class="btn btn-ghost" style="padding:2px 8px;" onclick="shiftOccupantCount(1)">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="spatial-floorplan">
+        <div class="seating-grid" id="spatialSeatingGrid"></div>
+      </div>
+    </div>
+
+    <div class="panel-card">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Zone Circuits & Relay Channel Diagnostics</div>
+          <span style="font-size: 11px; color: var(--text-dim);">Max 6 Channels / 3.5kW Circuit Safety Limit</span>
+        </div>
+
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-purple" onclick="killAllGhostLoads()">Zero Ghost Standby</button>
+          <button class="btn btn-primary" onclick="openAddApplianceModal()">+ Add Appliance</button>
+        </div>
+      </div>
+
+      <div class="room-cards-grid" id="adminZoneGrid"></div>
+    </div>
+
+    <div class="panel-card">
+      <div class="panel-header">
+        <div class="panel-title">MQTT Telemetry Audit Log</div>
+        <span class="badge-tag tag-occupied">Autopilot Active</span>
+      </div>
+      <div style="max-height: 190px; overflow-y: auto;">
+        <table class="terminal-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Origin Zone</th>
+              <th>MQTT Topic</th>
+              <th>Telemetry Payload</th>
+            </tr>
+          </thead>
+          <tbody id="telemetryTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- USER PORTAL -->
+  <section id="viewUser" class="view-pane">
+    <div class="panel-card" style="background: linear-gradient(135deg, #111a2c, #0a1120); border-color: #263859;">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title" style="font-size: 18px;">Welcome, Priyansh (Assigned: Electronics Lab 204)</div>
+          <span style="font-size: 12px; color: var(--text-muted);">Workstation Headroom: <strong style="color:var(--success);" id="userHeadroomLabel">2,950 W Available</strong></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="split-layout">
+      <div class="panel-card">
+        <div class="panel-header">
+          <div class="panel-title">Your Workstation Appliance Controls</div>
+          <span class="badge-tag tag-occupied">Presence Confirmed</span>
+        </div>
+        <div id="studentApplianceList" style="display:flex; flex-direction:column; gap:10px;"></div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        <div class="panel-card">
+          <div class="panel-header">
+            <div class="panel-title">NILM Load Signature</div>
+          </div>
+          <div id="studentNILMDetails" style="font-size: 12px; color: var(--text-muted); line-height: 1.6;"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- MODAL DATA STUDIO -->
+<div class="modal-overlay" id="modalDataStudio">
+  <div class="modal-content">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h3 style="font-size:16px; font-weight:800;">⚡ Custom Data Injector Studio</h3>
+      <button class="btn btn-ghost" onclick="closeDataStudio()">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Single Data Point Ingest (Watts)</label>
+      <div style="display:flex; gap:8px;">
+        <input type="number" class="input-field" id="customWattInput" placeholder="e.g. 5200" style="flex:1;">
+        <button class="btn btn-primary" onclick="injectSingleDataPoint()">Inject Now</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Batch CSV Power Stream</label>
+      <textarea class="input-field" id="batchWattInput" rows="3" placeholder="3800, 4200, 2900, 5400, 3100, 4800"></textarea>
+      <button class="btn btn-accent" style="margin-top:6px;" onclick="injectBatchDataPoints()">Stream Batch into Chart</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ADD APPLIANCE -->
+<div class="modal-overlay" id="modalAddAppliance">
+  <div class="modal-content">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h3 style="font-size:16px; font-weight:800;">🔌 Add Hardware Appliance</h3>
+      <button class="btn btn-ghost" onclick="closeAddApplianceModal()">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Target Monitored Room</label>
+      <select class="input-field" id="formNewRoomSelect"></select>
+    </div>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+      <div class="form-group">
+        <label class="form-label">Appliance Name</label>
+        <input type="text" class="input-field" id="formNewAppName" placeholder="e.g. 3D Printer">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Appliance Icon</label>
+        <input type="text" class="input-field" id="formNewAppIcon" value="🖨️">
+      </div>
+    </div>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+      <div class="form-group">
+        <label class="form-label">Active Power (Watts)</label>
+        <input type="number" class="input-field" id="formNewAppWatts" value="450">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ghost Standby (Watts)</label>
+        <input type="number" class="input-field" id="formNewAppGhost" value="18">
+      </div>
+    </div>
+    <button class="btn btn-primary" style="margin-top:8px;" onclick="submitNewAppliance()">Mount to Relay Circuit</button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
